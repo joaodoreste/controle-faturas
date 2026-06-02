@@ -38,3 +38,20 @@ export function excluirGastosDaFatura(faturaId) {
 
     salvarGastos(novosGastos);
 }
+
+export function exportarBackup() {
+    return {
+        faturas: buscarFaturas(),
+        gastos: buscarGastos(),
+        exportadoEm: new Date().toISOString()
+    };
+}
+
+export function importarBackup(backup) {
+    if (!backup || !Array.isArray(backup.faturas) || !Array.isArray(backup.gastos)) {
+        throw new Error("Backup inválido");
+    }
+
+    salvarFaturas(backup.faturas);
+    salvarGastos(backup.gastos);
+}

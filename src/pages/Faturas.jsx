@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Box,
     Button,
@@ -16,7 +16,9 @@ import {
     buscarFaturas,
     salvarFaturas,
     excluirFatura,
-    excluirGastosDaFatura
+    excluirGastosDaFatura,
+    exportarBackup,
+    importarBackup
 } from "../services/localStorageService";
 
 function Faturas() {
@@ -28,6 +30,8 @@ function Faturas() {
 
     const [faturaEditandoId, setFaturaEditandoId] = useState(null);
 
+    const inputArquivoRef = useRef(null);
+
     useEffect(() => {
         setFaturas(buscarFaturas());
     }, []);
@@ -37,6 +41,58 @@ function Faturas() {
         setAno(new Date().getFullYear());
         setValorTotal("");
         setFaturaEditandoId(null);
+    }
+
+    function fazerBackup() {
+        const backup = exportarBackup();
+
+        const blob = new Blob(
+            [JSON.stringify(backup, null, 2)],
+            { type: "application/json" }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "controle-faturas-backup.json";
+        link.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    function restaurarBackup(event) {
+        const arquivo = event.target.files[0];
+
+        if (!arquivo) return;
+
+        const leitor = new FileReader();
+
+        leitor.onload = function (e) {
+            try {
+                const backup = JSON.parse(e.target.result);
+
+                const confirmar = confirm(
+                    "Deseja substituir todos os dados atuais pelo backup?"
+                );
+
+                if (!confirmar) return;
+
+                importarBackup(backup);
+
+                setFaturas(buscarFaturas());
+
+                alert("Backup restaurado com sucesso!");
+
+                window.location.reload();
+            } catch {
+                alert("Arquivo de backup inválido.");
+            }
+        };
+
+        leitor.readAsText(arquivo);
+
+        event.target.value = "";
     }
 
     function salvarFatura(event) {
@@ -175,7 +231,7 @@ function Faturas() {
                             margin="normal"
                         />
 
-                        <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+                        <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
                             <Button type="submit" variant="contained">
                                 {faturaEditandoId ? "Salvar Alterações" : "Salvar Fatura"}
                             </Button>
@@ -189,6 +245,27 @@ function Faturas() {
                                     Cancelar
                                 </Button>
                             )}
+                        </Box>
+
+                        <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
+                            <Button variant="outlined" onClick={fazerBackup}>
+                                Exportar Backup
+                            </Button>
+
+                            <Button
+                                variant="outlined"
+                                onClick={() => inputArquivoRef.current.click()}
+                            >
+                                Importar Backup
+                            </Button>
+
+                            <input
+                                type="file"
+                                accept=".json"
+                                ref={inputArquivoRef}
+                                style={{ display: "none" }}
+                                onChange={restaurarBackup}
+                            />
                         </Box>
                     </Box>
                 </CardContent>

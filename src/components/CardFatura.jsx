@@ -8,7 +8,15 @@ import {
 } from "@mui/material";
 import { buscarGastos } from "../services/localStorageService";
 
-function CardFatura({ fatura, onEditar, onExcluir }) {
+function CardFatura({
+                        fatura,
+                        onEditar,
+                        onExcluir,
+                        onSubir,
+                        onDescer,
+                        podeSubir,
+                        podeDescer
+                    }) {
     const navigate = useNavigate();
 
     const gastos = buscarGastos().filter(
@@ -86,7 +94,31 @@ function CardFatura({ fatura, onEditar, onExcluir }) {
                     Não distribuído: R$ {valorNaoDistribuido.toFixed(2)}
                 </Typography>
 
-                <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+                <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={!podeSubir}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onSubir();
+                        }}
+                    >
+                        ↑ Subir
+                    </Button>
+
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={!podeDescer}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onDescer();
+                        }}
+                    >
+                        ↓ Descer
+                    </Button>
+
                     <Button
                         variant="outlined"
                         size="small"

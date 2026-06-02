@@ -72,7 +72,7 @@ function Faturas() {
             valorTotal: Number(valorTotal)
         };
 
-        const novasFaturas = [...faturas, novaFatura];
+        const novasFaturas = [novaFatura, ...faturas];
 
         setFaturas(novasFaturas);
         salvarFaturas(novasFaturas);
@@ -106,21 +106,35 @@ function Faturas() {
         }
     }
 
-    const faturasOrdenadas = [...faturas].sort((a, b) => {
-        if (a.ano !== b.ano) {
-            return b.ano - a.ano;
-        }
+    function subirFatura(index) {
+        if (index === 0) return;
 
-        return b.id - a.id;
-    });
+        const novasFaturas = [...faturas];
+
+        const temporaria = novasFaturas[index - 1];
+        novasFaturas[index - 1] = novasFaturas[index];
+        novasFaturas[index] = temporaria;
+
+        setFaturas(novasFaturas);
+        salvarFaturas(novasFaturas);
+    }
+
+    function descerFatura(index) {
+        if (index === faturas.length - 1) return;
+
+        const novasFaturas = [...faturas];
+
+        const temporaria = novasFaturas[index + 1];
+        novasFaturas[index + 1] = novasFaturas[index];
+        novasFaturas[index] = temporaria;
+
+        setFaturas(novasFaturas);
+        salvarFaturas(novasFaturas);
+    }
 
     return (
         <Container maxWidth="sm" sx={{ py: 3 }}>
-            <Typography
-                variant="h4"
-                fontWeight="bold"
-                gutterBottom
-            >
+            <Typography variant="h4" fontWeight="bold" gutterBottom>
                 Minhas Faturas
             </Typography>
 
@@ -128,26 +142,15 @@ function Faturas() {
 
             <Card sx={{ mb: 3, borderRadius: 3 }}>
                 <CardContent>
-                    <Typography
-                        variant="h6"
-                        fontWeight="bold"
-                        gutterBottom
-                    >
-                        {faturaEditandoId
-                            ? "Editar Fatura"
-                            : "Nova Fatura"}
+                    <Typography variant="h6" fontWeight="bold" gutterBottom>
+                        {faturaEditandoId ? "Editar Fatura" : "Nova Fatura"}
                     </Typography>
 
-                    <Box
-                        component="form"
-                        onSubmit={salvarFatura}
-                    >
+                    <Box component="form" onSubmit={salvarFatura}>
                         <TextField
                             label="Mês"
                             value={mes}
-                            onChange={event =>
-                                setMes(event.target.value)
-                            }
+                            onChange={event => setMes(event.target.value)}
                             placeholder="Ex: Junho"
                             fullWidth
                             margin="normal"
@@ -157,9 +160,7 @@ function Faturas() {
                             label="Ano"
                             type="number"
                             value={ano}
-                            onChange={event =>
-                                setAno(event.target.value)
-                            }
+                            onChange={event => setAno(event.target.value)}
                             fullWidth
                             margin="normal"
                         />
@@ -168,28 +169,15 @@ function Faturas() {
                             label="Valor Total"
                             type="number"
                             value={valorTotal}
-                            onChange={event =>
-                                setValorTotal(event.target.value)
-                            }
+                            onChange={event => setValorTotal(event.target.value)}
                             placeholder="Ex: 1800"
                             fullWidth
                             margin="normal"
                         />
 
-                        <Box
-                            sx={{
-                                display: "flex",
-                                gap: 1,
-                                mt: 2
-                            }}
-                        >
-                            <Button
-                                type="submit"
-                                variant="contained"
-                            >
-                                {faturaEditandoId
-                                    ? "Salvar Alterações"
-                                    : "Salvar Fatura"}
+                        <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+                            <Button type="submit" variant="contained">
+                                {faturaEditandoId ? "Salvar Alterações" : "Salvar Fatura"}
                             </Button>
 
                             {faturaEditandoId && (
@@ -206,25 +194,23 @@ function Faturas() {
                 </CardContent>
             </Card>
 
-            <Typography
-                variant="h6"
-                fontWeight="bold"
-                gutterBottom
-            >
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
                 Faturas Cadastradas
             </Typography>
 
-            {faturasOrdenadas.length === 0 ? (
-                <Typography>
-                    Nenhuma fatura cadastrada.
-                </Typography>
+            {faturas.length === 0 ? (
+                <Typography>Nenhuma fatura cadastrada.</Typography>
             ) : (
-                faturasOrdenadas.map(fatura => (
+                faturas.map((fatura, index) => (
                     <CardFatura
                         key={fatura.id}
                         fatura={fatura}
                         onEditar={editarFatura}
                         onExcluir={removerFatura}
+                        onSubir={() => subirFatura(index)}
+                        onDescer={() => descerFatura(index)}
+                        podeSubir={index > 0}
+                        podeDescer={index < faturas.length - 1}
                     />
                 ))
             )}

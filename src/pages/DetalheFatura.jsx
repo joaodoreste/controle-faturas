@@ -493,6 +493,12 @@ function DetalheFatura() {
                                                     event.target.value
                                                 )
                                             }
+                                            onKeyDown={event => {
+                                                if (event.key === "Enter") {
+                                                    event.preventDefault();
+                                                    event.target.blur();
+                                                }
+                                            }}
                                             fullWidth
                                             margin="normal"
                                         />

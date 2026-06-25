@@ -1,5 +1,6 @@
 const FATURAS_KEY = "controle_faturas";
 const GASTOS_KEY = "controle_gastos";
+const PAGAMENTOS_MINHA_PARTE_KEY = "controle_pagamentos_minha_parte";
 
 export function buscarFaturas() {
     const dados = localStorage.getItem(FATURAS_KEY);
@@ -17,6 +18,15 @@ export function buscarGastos() {
 
 export function salvarGastos(gastos) {
     localStorage.setItem(GASTOS_KEY, JSON.stringify(gastos));
+}
+
+export function buscarPagamentosMinhaParte() {
+    const dados = localStorage.getItem(PAGAMENTOS_MINHA_PARTE_KEY);
+    return dados ? JSON.parse(dados) : [];
+}
+
+export function salvarPagamentosMinhaParte(pagamentos) {
+    localStorage.setItem(PAGAMENTOS_MINHA_PARTE_KEY, JSON.stringify(pagamentos));
 }
 
 export function excluirFatura(faturaId) {
@@ -39,10 +49,21 @@ export function excluirGastosDaFatura(faturaId) {
     salvarGastos(novosGastos);
 }
 
+export function excluirPagamentosMinhaParteDaFatura(faturaId) {
+    const pagamentos = buscarPagamentosMinhaParte();
+
+    const novosPagamentos = pagamentos.filter(
+        pagamento => String(pagamento.faturaId) !== String(faturaId)
+    );
+
+    salvarPagamentosMinhaParte(novosPagamentos);
+}
+
 export function exportarBackup() {
     return {
         faturas: buscarFaturas(),
         gastos: buscarGastos(),
+        pagamentosMinhaParte: buscarPagamentosMinhaParte(),
         exportadoEm: new Date().toISOString()
     };
 }
@@ -54,4 +75,9 @@ export function importarBackup(backup) {
 
     salvarFaturas(backup.faturas);
     salvarGastos(backup.gastos);
+    salvarPagamentosMinhaParte(
+        Array.isArray(backup.pagamentosMinhaParte)
+            ? backup.pagamentosMinhaParte
+            : []
+    );
 }

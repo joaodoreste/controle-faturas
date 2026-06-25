@@ -1,116 +1,96 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
     Box,
     Button,
     Card,
     CardContent,
-    Checkbox,
     Chip,
     Container,
-    FormControlLabel,
     TextField,
     Typography
 } from "@mui/material";
-import {
-    PieChart,
-    Pie,
-    Cell,
-    Tooltip,
-    ResponsiveContainer
-} from "recharts";
 import ResumoPorPessoa from "../components/ResumoPorPessoa";
 import {
     buscarFaturas,
     buscarGastos,
-    salvarGastos
+    buscarPagamentosMinhaParte,
+    salvarGastos,
+    salvarPagamentosMinhaParte
 } from "../services/localStorageService";
 
 function DetalheFatura() {
     const { id } = useParams();
     const navigate = useNavigate();
 
-    const [gastos, setGastos] = useState([]);
-
+    const [gastos, setGastos] = useState(() =>
+        buscarGastos().filter(gasto => String(gasto.faturaId) === String(id))
+    );
+    const [pagamentosMinhaParte, setPagamentosMinhaParte] = useState(() =>
+        buscarPagamentosMinhaParte().filter(
+            pagamento => String(pagamento.faturaId) === String(id)
+        )
+    );
     const [descricao, setDescricao] = useState("");
     const [valor, setValor] = useState("");
     const [devedor, setDevedor] = useState("");
-    const [souEu, setSouEu] = useState(false);
     const [gastoEditandoId, setGastoEditandoId] = useState(null);
+    const [valorPagamento, setValorPagamento] = useState("");
+    const [dataPagamento, setDataPagamento] = useState(
+        new Date().toISOString().slice(0, 10)
+    );
 
     const faturas = buscarFaturas();
     const fatura = faturas.find(item => String(item.id) === String(id));
-
-    useEffect(() => {
-        const todosGastos = buscarGastos();
-
-        const gastosDaFatura = todosGastos.filter(
-            gasto => String(gasto.faturaId) === String(id)
-        );
-
-        setGastos(gastosDaFatura);
-    }, [id]);
 
     function limparFormulario() {
         setDescricao("");
         setValor("");
         setDevedor("");
-        setSouEu(false);
         setGastoEditandoId(null);
+    }
+
+    function limparPagamento() {
+        setValorPagamento("");
+        setDataPagamento(new Date().toISOString().slice(0, 10));
     }
 
     function salvarGasto(event) {
         event.preventDefault();
 
         if (!descricao || !valor) {
-            alert("Preencha a descrição e o valor.");
+            alert("Preencha a descricao e o valor.");
             return;
         }
 
-        if (!souEu && !devedor) {
+        if (!devedor) {
             alert("Informe quem deve esse valor.");
             return;
         }
 
-        const todosGastos = buscarGastos();
-
         const dadosGasto = {
             descricao: descricao.trim(),
             valor: Number(valor),
-            devedor: souEu ? "Eu" : devedor.trim()
+            devedor: devedor.trim()
         };
 
+        const todosGastos = buscarGastos();
+
         if (gastoEditandoId) {
-            const gastosAtualizados = todosGastos.map(gasto => {
-                if (gasto.id !== gastoEditandoId) {
-                    return gasto;
-                }
-
-                return {
-                    ...gasto,
-                    ...dadosGasto,
-                    pago: souEu ? true : gasto.pago,
-                    valorPago: souEu ? Number(gasto.valorPago || 0) : 0
-                };
-            });
-
-            salvarGastos(gastosAtualizados);
-
-            setGastos(
-                gastos.map(gasto => {
-                    if (gasto.id !== gastoEditandoId) {
-                        return gasto;
-                    }
-
-                    return {
+            const gastosAtualizados = todosGastos.map(gasto =>
+                gasto.id === gastoEditandoId
+                    ? {
                         ...gasto,
                         ...dadosGasto,
-                        pago: souEu ? true : gasto.pago,
-                        valorPago: souEu ? Number(gasto.valorPago || 0) : 0
-                    };
-                })
+                        pago: gasto.pago
+                    }
+                    : gasto
             );
 
+            salvarGastos(gastosAtualizados);
+            setGastos(gastosAtualizados.filter(
+                gasto => String(gasto.faturaId) === String(id)
+            ));
             limparFormulario();
             return;
         }
@@ -119,13 +99,10 @@ function DetalheFatura() {
             id: Date.now(),
             faturaId: Number(id),
             ...dadosGasto,
-            pago: souEu,
-            valorPago: 0
+            pago: false
         };
 
-        const novosGastos = [...todosGastos, novoGasto];
-
-        salvarGastos(novosGastos);
+        salvarGastos([...todosGastos, novoGasto]);
         setGastos([...gastos, novoGasto]);
         limparFormulario();
     }
@@ -134,33 +111,7 @@ function DetalheFatura() {
         setGastoEditandoId(gasto.id);
         setDescricao(gasto.descricao);
         setValor(String(gasto.valor));
-
-        const ehMeu = gasto.devedor.trim().toLowerCase() === "eu";
-
-        setSouEu(ehMeu);
-        setDevedor(ehMeu ? "" : gasto.devedor);
-    }
-
-    function alterarValorPago(gastoId, novoValorPago) {
-        const valorPago = Number(novoValorPago || 0);
-
-        const todosGastos = buscarGastos();
-
-        const gastosAtualizados = todosGastos.map(gasto =>
-            gasto.id === gastoId
-                ? { ...gasto, valorPago }
-                : gasto
-        );
-
-        salvarGastos(gastosAtualizados);
-
-        setGastos(
-            gastos.map(gasto =>
-                gasto.id === gastoId
-                    ? { ...gasto, valorPago }
-                    : gasto
-            )
-        );
+        setDevedor(gasto.devedor);
     }
 
     function alternarPago(gastoId) {
@@ -173,23 +124,16 @@ function DetalheFatura() {
         );
 
         salvarGastos(gastosAtualizados);
-
-        setGastos(
-            gastos.map(gasto =>
-                gasto.id === gastoId
-                    ? { ...gasto, pago: !gasto.pago }
-                    : gasto
-            )
-        );
+        setGastos(gastosAtualizados.filter(
+            gasto => String(gasto.faturaId) === String(id)
+        ));
     }
 
     function excluirGasto(gastoId) {
         const confirmar = confirm("Tem certeza que deseja excluir esse gasto?");
         if (!confirmar) return;
 
-        const todosGastos = buscarGastos();
-
-        const gastosAtualizados = todosGastos.filter(
+        const gastosAtualizados = buscarGastos().filter(
             gasto => gasto.id !== gastoId
         );
 
@@ -201,18 +145,70 @@ function DetalheFatura() {
         }
     }
 
+    function salvarPagamentoMinhaParte(event) {
+        event.preventDefault();
+
+        if (!valorPagamento || !dataPagamento) {
+            alert("Informe o valor e a data do pagamento.");
+            return;
+        }
+
+        const valorConvertido = Number(valorPagamento);
+
+        if (valorConvertido <= 0) {
+            alert("Informe um valor maior que zero.");
+            return;
+        }
+
+        if (valorConvertido > faltaEuPagar) {
+            alert("O valor pago nao pode ser maior que o valor que falta pagar.");
+            return;
+        }
+
+        const novoPagamento = {
+            id: Date.now(),
+            faturaId: Number(id),
+            valor: valorConvertido,
+            data: dataPagamento
+        };
+
+        salvarPagamentosMinhaParte([
+            ...buscarPagamentosMinhaParte(),
+            novoPagamento
+        ]);
+        setPagamentosMinhaParte([...pagamentosMinhaParte, novoPagamento]);
+        limparPagamento();
+    }
+
+    function excluirPagamentoMinhaParte(pagamentoId) {
+        const confirmar = confirm("Tem certeza que deseja excluir esse pagamento?");
+        if (!confirmar) return;
+
+        const pagamentosAtualizados = buscarPagamentosMinhaParte().filter(
+            pagamento => pagamento.id !== pagamentoId
+        );
+
+        salvarPagamentosMinhaParte(pagamentosAtualizados);
+        setPagamentosMinhaParte(
+            pagamentosMinhaParte.filter(pagamento => pagamento.id !== pagamentoId)
+        );
+    }
+
+    function formatarData(data) {
+        if (!data) return "";
+
+        const [ano, mes, dia] = data.split("-");
+        return `${dia}/${mes}/${ano}`;
+    }
+
     if (!fatura) {
         return (
             <Container maxWidth="sm" sx={{ py: 3 }}>
                 <Typography variant="h5" fontWeight="bold">
-                    Fatura não encontrada
+                    Fatura nao encontrada
                 </Typography>
 
-                <Button
-                    sx={{ mt: 2 }}
-                    variant="contained"
-                    onClick={() => navigate("/")}
-                >
+                <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate("/")}>
                     Voltar
                 </Button>
             </Container>
@@ -220,50 +216,30 @@ function DetalheFatura() {
     }
 
     const totalQueDevem = gastos
-        .filter(gasto => gasto.devedor.trim().toLowerCase() !== "eu")
         .reduce((total, gasto) => total + gasto.valor, 0);
 
     const totalPago = gastos
-        .filter(
-            gasto =>
-                gasto.devedor.trim().toLowerCase() !== "eu" &&
-                gasto.pago
-        )
+        .filter(gasto => gasto.pago)
         .reduce((total, gasto) => total + gasto.valor, 0);
 
     const totalPendente = totalQueDevem - totalPago;
     const minhaParte = fatura.valorTotal - totalQueDevem;
 
-    const totalPagoPorMim = gastos
-        .filter(gasto => gasto.devedor.trim().toLowerCase() === "eu")
-        .reduce((total, gasto) => total + Number(gasto.valorPago || 0), 0);
-
-    const faltaEuPagar = Math.max(minhaParte - totalPagoPorMim, 0);
-
-    const valorDistribuido = gastos.reduce(
-        (total, gasto) => total + gasto.valor,
+    const totalPagoPorMim = pagamentosMinhaParte.reduce(
+        (total, pagamento) => total + Number(pagamento.valor || 0),
         0
     );
 
-    const valorNaoDistribuido = fatura.valorTotal - valorDistribuido;
+    const faltaEuPagar = Math.max(minhaParte - totalPagoPorMim, 0);
 
-    const dadosGrafico = [
-        { name: "Falta eu pagar", value: faltaEuPagar },
-        { name: "Pago por mim", value: totalPagoPorMim },
-        { name: "Recebido", value: totalPago },
-        { name: "Pendente", value: totalPendente },
-        {
-            name: "Não distribuído",
-            value: valorNaoDistribuido > 0 ? valorNaoDistribuido : 0
-        }
-    ].filter(item => item.value > 0);
-
-    const cores = ["#820AD1", "#1976D2", "#2E7D32", "#ED6C02", "#9E9E9E"];
+    const pagamentosOrdenados = [...pagamentosMinhaParte].sort(
+        (a, b) => String(b.data).localeCompare(String(a.data))
+    );
 
     return (
         <Container maxWidth="sm" sx={{ py: 3 }}>
             <Button variant="outlined" onClick={() => navigate("/")}>
-                ← Voltar
+                Voltar
             </Button>
 
             <Typography variant="h4" fontWeight="bold" sx={{ mt: 2 }}>
@@ -280,73 +256,109 @@ function DetalheFatura() {
                         Resumo da Fatura
                     </Typography>
 
-                    <Typography>
-                        Pessoas me devem: R$ {totalQueDevem.toFixed(2)}
-                    </Typography>
-
-                    <Typography>
-                        Já recebi: R$ {totalPago.toFixed(2)}
-                    </Typography>
-
-                    <Typography>
-                        Falta receber: R$ {totalPendente.toFixed(2)}
-                    </Typography>
+                    <Typography>Pessoas me devem: R$ {totalQueDevem.toFixed(2)}</Typography>
+                    <Typography>Ja recebi: R$ {totalPago.toFixed(2)}</Typography>
+                    <Typography>Falta receber: R$ {totalPendente.toFixed(2)}</Typography>
 
                     <Typography fontWeight="bold" sx={{ mt: 1 }}>
                         Minha parte: R$ {minhaParte.toFixed(2)}
                     </Typography>
 
-                    <Typography>
-                        Já paguei: R$ {totalPagoPorMim.toFixed(2)}
-                    </Typography>
+                    <Typography>Ja paguei: R$ {totalPagoPorMim.toFixed(2)}</Typography>
 
                     <Typography fontWeight="bold" color="warning.main">
                         Falta eu pagar: R$ {faltaEuPagar.toFixed(2)}
                     </Typography>
 
-                    <Typography sx={{ mt: 1 }}>
-                        Valor distribuído: R$ {valorDistribuido.toFixed(2)}
+                </CardContent>
+            </Card>
+
+            <Card sx={{ mb: 3, borderRadius: 3 }}>
+                <CardContent>
+                    <Typography variant="h6" fontWeight="bold" gutterBottom>
+                        Pagamentos da Minha Parte
                     </Typography>
 
-                    <Typography
-                        color={
-                            valorNaoDistribuido > 0
-                                ? "warning.main"
-                                : "success.main"
-                        }
-                        fontWeight="bold"
-                    >
-                        Valor não distribuído: R$ {valorNaoDistribuido.toFixed(2)}
+                    <Typography>Total da fatura: R$ {fatura.valorTotal.toFixed(2)}</Typography>
+                    <Typography>Pessoas me devem: R$ {totalQueDevem.toFixed(2)}</Typography>
+
+                    <Typography fontWeight="bold">
+                        Sobrou para mim: R$ {minhaParte.toFixed(2)}
                     </Typography>
 
-                    {dadosGrafico.length > 0 && (
-                        <Box sx={{ width: "100%", height: 240, mt: 3 }}>
-                            <ResponsiveContainer>
-                                <PieChart>
-                                    <Pie
-                                        data={dadosGrafico}
-                                        dataKey="value"
-                                        nameKey="name"
-                                        outerRadius={85}
-                                        label
+                    <Typography>Ja paguei: R$ {totalPagoPorMim.toFixed(2)}</Typography>
+
+                    <Typography fontWeight="bold" color="warning.main">
+                        Falta eu pagar: R$ {faltaEuPagar.toFixed(2)}
+                    </Typography>
+
+                    <Box component="form" onSubmit={salvarPagamentoMinhaParte} sx={{ mt: 2 }}>
+                        <TextField
+                            label="Data do pagamento"
+                            type="date"
+                            value={dataPagamento}
+                            onChange={event => setDataPagamento(event.target.value)}
+                            fullWidth
+                            margin="normal"
+                            InputLabelProps={{ shrink: true }}
+                        />
+
+                        <TextField
+                            label="Valor pago"
+                            type="number"
+                            value={valorPagamento}
+                            onChange={event => setValorPagamento(event.target.value)}
+                            placeholder="Ex: 100"
+                            fullWidth
+                            margin="normal"
+                        />
+
+                        <Button type="submit" variant="contained" sx={{ mt: 1 }}>
+                            Marcar como pago
+                        </Button>
+                    </Box>
+
+                    <Box sx={{ mt: 2 }}>
+                        {pagamentosOrdenados.length === 0 ? (
+                            <Typography color="text.secondary">
+                                Nenhum pagamento registrado.
+                            </Typography>
+                        ) : (
+                            pagamentosOrdenados.map(pagamento => (
+                                <Box
+                                    key={pagamento.id}
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        gap: 1,
+                                        py: 1,
+                                        borderTop: "1px solid",
+                                        borderColor: "divider"
+                                    }}
+                                >
+                                    <Box>
+                                        <Typography fontWeight="bold">
+                                            R$ {Number(pagamento.valor).toFixed(2)}
+                                        </Typography>
+
+                                        <Typography color="text.secondary">
+                                            {formatarData(pagamento.data)}
+                                        </Typography>
+                                    </Box>
+
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        size="small"
+                                        onClick={() => excluirPagamentoMinhaParte(pagamento.id)}
                                     >
-                                        {dadosGrafico.map((item, index) => (
-                                            <Cell
-                                                key={item.name}
-                                                fill={cores[index % cores.length]}
-                                            />
-                                        ))}
-                                    </Pie>
-
-                                    <Tooltip
-                                        formatter={(value) =>
-                                            `R$ ${Number(value).toFixed(2)}`
-                                        }
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </Box>
-                    )}
+                                        Excluir
+                                    </Button>
+                                </Box>
+                            ))
+                        )}
+                    </Box>
                 </CardContent>
             </Card>
 
@@ -360,7 +372,7 @@ function DetalheFatura() {
 
                     <Box component="form" onSubmit={salvarGasto}>
                         <TextField
-                            label="Descrição"
+                            label="Descricao"
                             value={descricao}
                             onChange={event => setDescricao(event.target.value)}
                             placeholder="Ex: Mercado"
@@ -378,42 +390,22 @@ function DetalheFatura() {
                             margin="normal"
                         />
 
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={souEu}
-                                    onChange={event =>
-                                        setSouEu(event.target.checked)
-                                    }
-                                />
-                            }
-                            label="Esse gasto é meu"
+                        <TextField
+                            label="Quem deve?"
+                            value={devedor}
+                            onChange={event => setDevedor(event.target.value)}
+                            placeholder="Ex: Pai"
+                            fullWidth
+                            margin="normal"
                         />
-
-                        {!souEu && (
-                            <TextField
-                                label="Quem deve?"
-                                value={devedor}
-                                onChange={event => setDevedor(event.target.value)}
-                                placeholder="Ex: Pai"
-                                fullWidth
-                                margin="normal"
-                            />
-                        )}
 
                         <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
                             <Button type="submit" variant="contained">
-                                {gastoEditandoId
-                                    ? "Salvar Alterações"
-                                    : "Salvar Gasto"}
+                                {gastoEditandoId ? "Salvar Alteracoes" : "Salvar Gasto"}
                             </Button>
 
                             {gastoEditandoId && (
-                                <Button
-                                    type="button"
-                                    variant="outlined"
-                                    onClick={limparFormulario}
-                                >
+                                <Button type="button" variant="outlined" onClick={limparFormulario}>
                                     Cancelar
                                 </Button>
                             )}
@@ -429,18 +421,8 @@ function DetalheFatura() {
             {gastos.length === 0 ? (
                 <Typography>Nenhum gasto cadastrado.</Typography>
             ) : (
-                gastos.map(gasto => {
-                    const ehMeu =
-                        gasto.devedor.trim().toLowerCase() === "eu";
-
-                    const valorPago = Number(gasto.valorPago || 0);
-                    const faltaPagarGasto = Math.max(gasto.valor - valorPago, 0);
-
-                    return (
-                        <Card
-                            key={gasto.id}
-                            sx={{ mb: 2, borderRadius: 3 }}
-                        >
+                gastos.map(gasto => (
+                        <Card key={gasto.id} sx={{ mb: 2, borderRadius: 3 }}>
                             <CardContent>
                                 <Box
                                     sx={{
@@ -455,20 +437,8 @@ function DetalheFatura() {
                                     </Typography>
 
                                     <Chip
-                                        label={
-                                            ehMeu
-                                                ? "Minha despesa"
-                                                : gasto.pago
-                                                    ? "Pago"
-                                                    : "Pendente"
-                                        }
-                                        color={
-                                            ehMeu
-                                                ? "default"
-                                                : gasto.pago
-                                                    ? "success"
-                                                    : "warning"
-                                        }
+                                        label={gasto.pago ? "Pago" : "Pendente"}
+                                        color={gasto.pago ? "success" : "warning"}
                                         size="small"
                                     />
                                 </Box>
@@ -477,69 +447,18 @@ function DetalheFatura() {
                                     Valor: R$ {gasto.valor.toFixed(2)}
                                 </Typography>
 
-                                <Typography>
-                                    Quem deve: {gasto.devedor}
-                                </Typography>
+                                <Typography>Quem deve: {gasto.devedor}</Typography>
 
-                                {ehMeu && (
-                                    <Box sx={{ mt: 2 }}>
-                                        <TextField
-                                            label="Valor que já paguei"
-                                            type="number"
-                                            value={valorPago || ""}
-                                            onChange={event =>
-                                                alterarValorPago(
-                                                    gasto.id,
-                                                    event.target.value
-                                                )
-                                            }
-                                            onKeyDown={event => {
-                                                if (event.key === "Enter") {
-                                                    event.preventDefault();
-                                                    event.target.blur();
-                                                }
-                                            }}
-                                            fullWidth
-                                            margin="normal"
-                                        />
-
-                                        <Typography>
-                                            Já paguei: R$ {valorPago.toFixed(2)}
-                                        </Typography>
-
-                                        <Typography fontWeight="bold" color="warning.main">
-                                            Falta pagar: R$ {faltaPagarGasto.toFixed(2)}
-                                        </Typography>
-                                    </Box>
-                                )}
-
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        gap: 1,
-                                        mt: 2,
-                                        flexWrap: "wrap"
-                                    }}
-                                >
-                                    {!ehMeu && (
-                                        <Button
-                                            variant="outlined"
-                                            size="small"
-                                            onClick={() =>
-                                                alternarPago(gasto.id)
-                                            }
-                                        >
-                                            {gasto.pago
-                                                ? "Marcar pendente"
-                                                : "Marcar pago"}
-                                        </Button>
-                                    )}
-
+                                <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
                                     <Button
                                         variant="outlined"
                                         size="small"
-                                        onClick={() => editarGasto(gasto)}
+                                        onClick={() => alternarPago(gasto.id)}
                                     >
+                                        {gasto.pago ? "Marcar pendente" : "Marcar pago"}
+                                    </Button>
+
+                                    <Button variant="outlined" size="small" onClick={() => editarGasto(gasto)}>
                                         Editar
                                     </Button>
 
@@ -554,8 +473,7 @@ function DetalheFatura() {
                                 </Box>
                             </CardContent>
                         </Card>
-                    );
-                })
+                ))
             )}
         </Container>
     );

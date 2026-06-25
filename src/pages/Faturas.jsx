@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
     Box,
     Button,
@@ -17,12 +17,13 @@ import {
     salvarFaturas,
     excluirFatura,
     excluirGastosDaFatura,
+    excluirPagamentosMinhaParteDaFatura,
     exportarBackup,
     importarBackup
 } from "../services/localStorageService";
 
 function Faturas() {
-    const [faturas, setFaturas] = useState([]);
+    const [faturas, setFaturas] = useState(() => buscarFaturas());
 
     const [mes, setMes] = useState("");
     const [ano, setAno] = useState(new Date().getFullYear());
@@ -31,10 +32,6 @@ function Faturas() {
     const [faturaEditandoId, setFaturaEditandoId] = useState(null);
 
     const inputArquivoRef = useRef(null);
-
-    useEffect(() => {
-        setFaturas(buscarFaturas());
-    }, []);
 
     function limparFormulario() {
         setMes("");
@@ -152,6 +149,7 @@ function Faturas() {
 
         excluirFatura(fatura.id);
         excluirGastosDaFatura(fatura.id);
+        excluirPagamentosMinhaParteDaFatura(fatura.id);
 
         setFaturas(
             faturas.filter(item => item.id !== fatura.id)

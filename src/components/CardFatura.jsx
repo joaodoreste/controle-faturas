@@ -6,7 +6,10 @@ import {
     CardContent,
     Typography
 } from "@mui/material";
-import { buscarGastos } from "../services/localStorageService";
+import {
+    buscarGastos,
+    buscarPagamentosMinhaParte
+} from "../services/localStorageService";
 
 function CardFatura({
                         fatura,
@@ -23,27 +26,28 @@ function CardFatura({
         gasto => String(gasto.faturaId) === String(fatura.id)
     );
 
-    const totalQueDevem = gastos
-        .filter(gasto => gasto.devedor.trim().toLowerCase() !== "eu")
-        .reduce((total, gasto) => total + gasto.valor, 0);
+    const pagamentosMinhaParte = buscarPagamentosMinhaParte().filter(
+        pagamento => String(pagamento.faturaId) === String(fatura.id)
+    );
+
+    const totalQueDevem = gastos.reduce(
+        (total, gasto) => total + gasto.valor,
+        0
+    );
 
     const totalPago = gastos
-        .filter(
-            gasto =>
-                gasto.devedor.trim().toLowerCase() !== "eu" &&
-                gasto.pago
-        )
+        .filter(gasto => gasto.pago)
         .reduce((total, gasto) => total + gasto.valor, 0);
 
     const totalPendente = totalQueDevem - totalPago;
     const minhaParte = fatura.valorTotal - totalQueDevem;
 
-    const valorDistribuido = gastos.reduce(
-        (total, gasto) => total + gasto.valor,
+    const totalPagoPorMim = pagamentosMinhaParte.reduce(
+        (total, pagamento) => total + Number(pagamento.valor || 0),
         0
     );
 
-    const valorNaoDistribuido = fatura.valorTotal - valorDistribuido;
+    const faltaEuPagar = Math.max(minhaParte - totalPagoPorMim, 0);
 
     return (
         <Card
@@ -68,7 +72,7 @@ function CardFatura({
                 </Typography>
 
                 <Typography>
-                    Já recebi: R$ {totalPago.toFixed(2)}
+                    Ja recebi: R$ {totalPago.toFixed(2)}
                 </Typography>
 
                 <Typography>
@@ -80,18 +84,11 @@ function CardFatura({
                 </Typography>
 
                 <Typography>
-                    Distribuído: R$ {valorDistribuido.toFixed(2)}
+                    Ja paguei: R$ {totalPagoPorMim.toFixed(2)}
                 </Typography>
 
-                <Typography
-                    color={
-                        valorNaoDistribuido > 0
-                            ? "warning.main"
-                            : "success.main"
-                    }
-                    fontWeight="bold"
-                >
-                    Não distribuído: R$ {valorNaoDistribuido.toFixed(2)}
+                <Typography fontWeight="bold" color="warning.main">
+                    Falta eu pagar: R$ {faltaEuPagar.toFixed(2)}
                 </Typography>
 
                 <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
@@ -104,7 +101,7 @@ function CardFatura({
                             onSubir();
                         }}
                     >
-                        ↑ Subir
+                        Subir
                     </Button>
 
                     <Button
@@ -116,7 +113,7 @@ function CardFatura({
                             onDescer();
                         }}
                     >
-                        ↓ Descer
+                        Descer
                     </Button>
 
                     <Button

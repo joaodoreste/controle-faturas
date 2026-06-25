@@ -2,74 +2,41 @@ import {
     Card,
     CardContent,
     Grid,
-    Typography,
-    Box
+    Typography
 } from "@mui/material";
 import {
-    PieChart,
-    Pie,
-    Cell,
-    Tooltip,
-    ResponsiveContainer
-} from "recharts";
-import { buscarGastos } from "../services/localStorageService";
+    buscarGastos,
+    buscarPagamentosMinhaParte
+} from "../services/localStorageService";
 
 function DashboardGeral({ faturas }) {
     const gastos = buscarGastos();
+    const pagamentosMinhaParte = buscarPagamentosMinhaParte();
 
     const valorTotalFaturas = faturas.reduce(
         (total, fatura) => total + fatura.valorTotal,
         0
     );
 
-    const totalQueDevem = gastos
-        .filter(gasto => gasto.devedor.trim().toLowerCase() !== "eu")
-        .reduce((total, gasto) => total + gasto.valor, 0);
-
-    const totalRecebido = gastos
-        .filter(
-            gasto =>
-                gasto.devedor.trim().toLowerCase() !== "eu" &&
-                gasto.pago
-        )
-        .reduce((total, gasto) => total + gasto.valor, 0);
-
-    const totalPendente = totalQueDevem - totalRecebido;
-
-    const valorDistribuido = gastos.reduce(
+    const totalQueDevem = gastos.reduce(
         (total, gasto) => total + gasto.valor,
         0
     );
 
-    const valorNaoDistribuido = valorTotalFaturas - valorDistribuido;
+    const totalRecebido = gastos
+        .filter(gasto => gasto.pago)
+        .reduce((total, gasto) => total + gasto.valor, 0);
+
+    const totalPendente = totalQueDevem - totalRecebido;
 
     const minhaParte = valorTotalFaturas - totalQueDevem;
 
-    const dadosGrafico = [
-        {
-            name: "Minha parte",
-            value: minhaParte
-        },
-        {
-            name: "Recebido",
-            value: totalRecebido
-        },
-        {
-            name: "Pendente",
-            value: totalPendente
-        },
-        {
-            name: "Não distribuído",
-            value: valorNaoDistribuido > 0 ? valorNaoDistribuido : 0
-        }
-    ].filter(item => item.value > 0);
+    const totalPagoPorMim = pagamentosMinhaParte.reduce(
+        (total, pagamento) => total + Number(pagamento.valor || 0),
+        0
+    );
 
-    const cores = [
-        "#820AD1",
-        "#2E7D32",
-        "#ED6C02",
-        "#9E9E9E"
-    ];
+    const faltaEuPagar = Math.max(minhaParte - totalPagoPorMim, 0);
 
     return (
         <Card sx={{ mb: 3, borderRadius: 3 }}>
@@ -108,7 +75,7 @@ function DashboardGeral({ faturas }) {
 
                     <Grid item xs={6}>
                         <Typography color="text.secondary">
-                            Já recebi
+                            Ja recebi
                         </Typography>
                         <Typography fontWeight="bold">
                             R$ {totalRecebido.toFixed(2)}
@@ -135,51 +102,23 @@ function DashboardGeral({ faturas }) {
 
                     <Grid item xs={6}>
                         <Typography color="text.secondary">
-                            Distribuído
+                            Ja paguei
                         </Typography>
                         <Typography fontWeight="bold">
-                            R$ {valorDistribuido.toFixed(2)}
+                            R$ {totalPagoPorMim.toFixed(2)}
                         </Typography>
                     </Grid>
 
                     <Grid item xs={6}>
                         <Typography color="text.secondary">
-                            Não distribuído
+                            Falta eu pagar
                         </Typography>
                         <Typography fontWeight="bold">
-                            R$ {valorNaoDistribuido.toFixed(2)}
+                            R$ {faltaEuPagar.toFixed(2)}
                         </Typography>
                     </Grid>
+
                 </Grid>
-
-                {dadosGrafico.length > 0 && (
-                    <Box sx={{ width: "100%", height: 260, mt: 3 }}>
-                        <ResponsiveContainer>
-                            <PieChart>
-                                <Pie
-                                    data={dadosGrafico}
-                                    dataKey="value"
-                                    nameKey="name"
-                                    outerRadius={90}
-                                    label
-                                >
-                                    {dadosGrafico.map((item, index) => (
-                                        <Cell
-                                            key={item.name}
-                                            fill={cores[index % cores.length]}
-                                        />
-                                    ))}
-                                </Pie>
-
-                                <Tooltip
-                                    formatter={(value) =>
-                                        `R$ ${Number(value).toFixed(2)}`
-                                    }
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </Box>
-                )}
             </CardContent>
         </Card>
     );

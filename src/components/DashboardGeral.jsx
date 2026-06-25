@@ -77,7 +77,7 @@ function DashboardGeral({ faturas }) {
 
                     <Grid item xs={6}>
                         <Typography color="text.secondary">
-                            Ja recebi
+                            Já recebi
                         </Typography>
                         <Typography fontWeight="bold">
                             R$ {totalRecebido.toFixed(2)}
@@ -104,7 +104,7 @@ function DashboardGeral({ faturas }) {
 
                     <Grid item xs={6}>
                         <Typography color="text.secondary">
-                            Ja paguei
+                            Já paguei
                         </Typography>
                         <Typography fontWeight="bold">
                             R$ {totalPagoPorMim.toFixed(2)}

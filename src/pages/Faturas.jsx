@@ -6,33 +6,30 @@ import {
     Card,
     CardContent,
     Container,
+    MenuItem,
     TextField,
     Typography
 } from "@mui/material";
-
 import CardFatura from "../components/CardFatura";
 import DashboardGeral from "../components/DashboardGeral";
-
 import {
     buscarFaturas,
-    salvarFaturas,
     excluirFatura,
     excluirGastosDaFatura,
     excluirPagamentosMinhaParteDaFatura,
     exportarBackup,
-    importarBackup
+    importarBackup,
+    salvarFaturas
 } from "../services/localStorageService";
+import { MESES, obterMesCanonico } from "../utils/meses";
 
 function Faturas() {
     const navigate = useNavigate();
     const [faturas, setFaturas] = useState(() => buscarFaturas());
-
     const [mes, setMes] = useState("");
     const [ano, setAno] = useState(new Date().getFullYear());
     const [valorTotal, setValorTotal] = useState("");
-
     const [faturaEditandoId, setFaturaEditandoId] = useState(null);
-
     const inputArquivoRef = useRef(null);
 
     function limparFormulario() {
@@ -44,19 +41,16 @@ function Faturas() {
 
     function fazerBackup() {
         const backup = exportarBackup();
-
         const blob = new Blob(
             [JSON.stringify(backup, null, 2)],
             { type: "application/json" }
         );
-
         const url = URL.createObjectURL(blob);
-
         const link = document.createElement("a");
+
         link.href = url;
         link.download = "controle-faturas-backup.json";
         link.click();
-
         URL.revokeObjectURL(url);
     }
 
@@ -70,7 +64,6 @@ function Faturas() {
         leitor.onload = function (e) {
             try {
                 const backup = JSON.parse(e.target.result);
-
                 const confirmar = confirm(
                     "Deseja substituir todos os dados atuais pelo backup?"
                 );
@@ -78,11 +71,8 @@ function Faturas() {
                 if (!confirmar) return;
 
                 importarBackup(backup);
-
                 setFaturas(buscarFaturas());
-
                 alert("Backup restaurado com sucesso!");
-
                 window.location.reload();
             } catch {
                 alert("Arquivo de backup inválido.");
@@ -90,7 +80,6 @@ function Faturas() {
         };
 
         leitor.readAsText(arquivo);
-
         event.target.value = "";
     }
 
@@ -102,14 +91,23 @@ function Faturas() {
             return;
         }
 
+        const dadosFatura = {
+            mes: obterMesCanonico(mes.trim()),
+            ano: Number(ano),
+            valorTotal: Number(valorTotal)
+        };
+
+        if (dadosFatura.valorTotal <= 0) {
+            alert("Informe um valor maior que zero.");
+            return;
+        }
+
         if (faturaEditandoId) {
             const faturasAtualizadas = faturas.map(fatura =>
                 fatura.id === faturaEditandoId
                     ? {
                         ...fatura,
-                        mes: mes.trim(),
-                        ano: Number(ano),
-                        valorTotal: Number(valorTotal)
+                        ...dadosFatura
                     }
                     : fatura
             );
@@ -122,22 +120,18 @@ function Faturas() {
 
         const novaFatura = {
             id: Date.now(),
-            mes: mes.trim(),
-            ano: Number(ano),
-            valorTotal: Number(valorTotal)
+            ...dadosFatura
         };
-
         const novasFaturas = [novaFatura, ...faturas];
 
         setFaturas(novasFaturas);
         salvarFaturas(novasFaturas);
-
         limparFormulario();
     }
 
     function editarFatura(fatura) {
         setFaturaEditandoId(fatura.id);
-        setMes(fatura.mes);
+        setMes(obterMesCanonico(fatura.mes));
         setAno(fatura.ano);
         setValorTotal(fatura.valorTotal);
     }
@@ -152,10 +146,7 @@ function Faturas() {
         excluirFatura(fatura.id);
         excluirGastosDaFatura(fatura.id);
         excluirPagamentosMinhaParteDaFatura(fatura.id);
-
-        setFaturas(
-            faturas.filter(item => item.id !== fatura.id)
-        );
+        setFaturas(faturas.filter(item => item.id !== fatura.id));
 
         if (faturaEditandoId === fatura.id) {
             limparFormulario();
@@ -166,11 +157,10 @@ function Faturas() {
         if (index === 0) return;
 
         const novasFaturas = [...faturas];
-
         const temporaria = novasFaturas[index - 1];
+
         novasFaturas[index - 1] = novasFaturas[index];
         novasFaturas[index] = temporaria;
-
         setFaturas(novasFaturas);
         salvarFaturas(novasFaturas);
     }
@@ -179,11 +169,10 @@ function Faturas() {
         if (index === faturas.length - 1) return;
 
         const novasFaturas = [...faturas];
-
         const temporaria = novasFaturas[index + 1];
+
         novasFaturas[index + 1] = novasFaturas[index];
         novasFaturas[index] = temporaria;
-
         setFaturas(novasFaturas);
         salvarFaturas(novasFaturas);
     }
@@ -194,13 +183,15 @@ function Faturas() {
                 Minhas Faturas
             </Typography>
 
-            <Button
-                variant="outlined"
-                onClick={() => navigate("/planejamento")}
-                sx={{ mb: 2 }}
-            >
-                Planejamento Futuro
-            </Button>
+            <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
+                <Button variant="outlined" onClick={() => navigate("/planejamento")}>
+                    Planejamento Futuro
+                </Button>
+
+                <Button variant="outlined" onClick={() => navigate("/pessoas")}>
+                    Pessoas
+                </Button>
+            </Box>
 
             <DashboardGeral faturas={faturas} />
 
@@ -212,13 +203,19 @@ function Faturas() {
 
                     <Box component="form" onSubmit={salvarFatura}>
                         <TextField
+                            select
                             label="Mês"
                             value={mes}
                             onChange={event => setMes(event.target.value)}
-                            placeholder="Ex: Junho"
                             fullWidth
                             margin="normal"
-                        />
+                        >
+                            {MESES.map(item => (
+                                <MenuItem key={item} value={item}>
+                                    {item}
+                                </MenuItem>
+                            ))}
+                        </TextField>
 
                         <TextField
                             label="Ano"

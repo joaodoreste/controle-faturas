@@ -65,33 +65,56 @@ function CardFatura({
                     {fatura.mes}/{fatura.ano}
                 </Typography>
 
-                <Typography>
-                    Valor Total: R$ {fatura.valorTotal.toFixed(2)}
-                </Typography>
+                <Box
+                    sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 1.5,
+                        mt: 1
+                    }}
+                >
+                    <Box>
+                        <Typography color="text.secondary">Valor total</Typography>
+                        <Typography fontWeight="bold">
+                            R$ {fatura.valorTotal.toFixed(2)}
+                        </Typography>
+                    </Box>
 
-                <Typography>
-                    Me devem: R$ {totalQueDevem.toFixed(2)}
-                </Typography>
+                    <Box>
+                        <Typography color="text.secondary">Me devem</Typography>
+                        <Typography fontWeight="bold">
+                            R$ {totalQueDevem.toFixed(2)}
+                        </Typography>
+                    </Box>
 
-                <Typography>
-                    Ja recebi: R$ {totalPago.toFixed(2)}
-                </Typography>
+                    <Box>
+                        <Typography color="text.secondary">Já recebi</Typography>
+                        <Typography fontWeight="bold">
+                            R$ {totalPago.toFixed(2)}
+                        </Typography>
+                    </Box>
 
-                <Typography>
-                    Falta receber: R$ {totalPendente.toFixed(2)}
-                </Typography>
+                    <Box>
+                        <Typography color="text.secondary">Falta receber</Typography>
+                        <Typography fontWeight="bold" color="warning.main">
+                            R$ {totalPendente.toFixed(2)}
+                        </Typography>
+                    </Box>
 
-                <Typography fontWeight="bold">
-                    Minha parte: R$ {minhaParte.toFixed(2)}
-                </Typography>
+                    <Box>
+                        <Typography color="text.secondary">Minha parte</Typography>
+                        <Typography fontWeight="bold">
+                            R$ {minhaParte.toFixed(2)}
+                        </Typography>
+                    </Box>
 
-                <Typography>
-                    Ja paguei: R$ {totalPagoPorMim.toFixed(2)}
-                </Typography>
-
-                <Typography fontWeight="bold" color="warning.main">
-                    Falta eu pagar: R$ {faltaEuPagar.toFixed(2)}
-                </Typography>
+                    <Box>
+                        <Typography color="text.secondary">Falta eu pagar</Typography>
+                        <Typography fontWeight="bold" color="warning.main">
+                            R$ {faltaEuPagar.toFixed(2)}
+                        </Typography>
+                    </Box>
+                </Box>
 
                 <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
                     <Button

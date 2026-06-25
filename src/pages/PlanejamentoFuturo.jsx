@@ -8,6 +8,7 @@ import {
     CardContent,
     Chip,
     Container,
+    MenuItem,
     TextField,
     Typography
 } from "@mui/material";
@@ -16,29 +17,12 @@ import {
     buscarPlanejamento,
     salvarPlanejamento
 } from "../services/localStorageService";
-
-const meses = [
-    "Janeiro",
-    "Fevereiro",
-    "Marco",
-    "Abril",
-    "Maio",
-    "Junho",
-    "Julho",
-    "Agosto",
-    "Setembro",
-    "Outubro",
-    "Novembro",
-    "Dezembro"
-];
-
-function normalizarTexto(texto) {
-    return String(texto)
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-}
+import {
+    MESES,
+    normalizarTexto,
+    obterMesCanonico,
+    ordenarPorMesAno
+} from "../utils/meses";
 
 function PlanejamentoFuturo() {
     const navigate = useNavigate();
@@ -76,7 +60,7 @@ function PlanejamentoFuturo() {
         event.preventDefault();
 
         if (!descricaoRecebimento || !valorRecebimento || !mesRecebimento || !anoRecebimento) {
-            alert("Preencha descricao, valor, mes e ano.");
+            alert("Preencha descrição, valor, mês e ano.");
             return;
         }
 
@@ -84,7 +68,7 @@ function PlanejamentoFuturo() {
             id: recebimentoEditandoId || Date.now(),
             descricao: descricaoRecebimento.trim(),
             valor: Number(valorRecebimento),
-            mes: mesRecebimento.trim(),
+            mes: obterMesCanonico(mesRecebimento.trim()),
             ano: Number(anoRecebimento)
         };
 
@@ -115,7 +99,7 @@ function PlanejamentoFuturo() {
         event.preventDefault();
 
         if (!descricaoDespesa || !valorDespesa || !mesDespesa || !anoDespesa) {
-            alert("Preencha descricao, valor, mes e ano.");
+            alert("Preencha descrição, valor, mês e ano.");
             return;
         }
 
@@ -123,7 +107,7 @@ function PlanejamentoFuturo() {
             id: despesaEditandoId || Date.now(),
             descricao: descricaoDespesa.trim(),
             valor: Number(valorDespesa),
-            mes: mesDespesa.trim(),
+            mes: obterMesCanonico(mesDespesa.trim()),
             ano: Number(anoDespesa)
         };
 
@@ -154,7 +138,7 @@ function PlanejamentoFuturo() {
         setRecebimentoEditandoId(recebimento.id);
         setDescricaoRecebimento(recebimento.descricao);
         setValorRecebimento(String(recebimento.valor));
-        setMesRecebimento(recebimento.mes);
+        setMesRecebimento(obterMesCanonico(recebimento.mes));
         setAnoRecebimento(recebimento.ano);
     }
 
@@ -170,7 +154,7 @@ function PlanejamentoFuturo() {
         setDespesaEditandoId(despesa.id);
         setDescricaoDespesa(despesa.descricao);
         setValorDespesa(String(despesa.valor));
-        setMesDespesa(despesa.mes);
+        setMesDespesa(obterMesCanonico(despesa.mes));
         setAnoDespesa(despesa.ano);
     }
 
@@ -212,21 +196,6 @@ function PlanejamentoFuturo() {
         return `${item.ano}-${normalizarTexto(item.mes)}`;
     }
 
-    function ordenarMeses(a, b) {
-        const indiceMesA = meses.findIndex(
-            mes => normalizarTexto(mes) === normalizarTexto(a.mes)
-        );
-        const indiceMesB = meses.findIndex(
-            mes => normalizarTexto(mes) === normalizarTexto(b.mes)
-        );
-
-        if (a.ano !== b.ano) {
-            return a.ano - b.ano;
-        }
-
-        return (indiceMesA === -1 ? 99 : indiceMesA) - (indiceMesB === -1 ? 99 : indiceMesB);
-    }
-
     const faturas = buscarFaturas();
 
     const mesesPlanejados = [
@@ -246,7 +215,7 @@ function PlanejamentoFuturo() {
 
     const mesesUnicos = Array.from(
         new Map(mesesPlanejados.map(item => [chaveMesAno(item), item])).values()
-    ).sort(ordenarMeses);
+    ).sort(ordenarPorMesAno);
 
     const projecao = mesesUnicos.reduce((resultado, item) => {
         const saldoInicial = resultado.saldoAtual;
@@ -309,7 +278,7 @@ function PlanejamentoFuturo() {
 
             {mesesNegativos.length > 0 && (
                 <Alert severity="warning" sx={{ mb: 2 }}>
-                    Existem {mesesNegativos.length} mes(es) com saldo previsto negativo.
+                    Existem {mesesNegativos.length} mês(es) com saldo previsto negativo.
                 </Alert>
             )}
 
@@ -345,10 +314,10 @@ function PlanejamentoFuturo() {
 
                     <Box component="form" onSubmit={salvarRecebimento}>
                         <TextField
-                            label="Descricao"
+                            label="Descrição"
                             value={descricaoRecebimento}
                             onChange={event => setDescricaoRecebimento(event.target.value)}
-                            placeholder="Ex: Salario"
+                            placeholder="Ex: Salário"
                             fullWidth
                             margin="normal"
                         />
@@ -364,13 +333,19 @@ function PlanejamentoFuturo() {
                         />
 
                         <TextField
-                            label="Mes"
+                            select
+                            label="Mês"
                             value={mesRecebimento}
                             onChange={event => setMesRecebimento(event.target.value)}
-                            placeholder="Ex: Julho"
                             fullWidth
                             margin="normal"
-                        />
+                        >
+                            {MESES.map(mes => (
+                                <MenuItem key={mes} value={mes}>
+                                    {mes}
+                                </MenuItem>
+                            ))}
+                        </TextField>
 
                         <TextField
                             label="Ano"
@@ -452,7 +427,7 @@ function PlanejamentoFuturo() {
 
                     <Box component="form" onSubmit={salvarDespesa}>
                         <TextField
-                            label="Descricao"
+                            label="Descrição"
                             value={descricaoDespesa}
                             onChange={event => setDescricaoDespesa(event.target.value)}
                             placeholder="Ex: Aluguel"
@@ -471,13 +446,19 @@ function PlanejamentoFuturo() {
                         />
 
                         <TextField
-                            label="Mes"
+                            select
+                            label="Mês"
                             value={mesDespesa}
                             onChange={event => setMesDespesa(event.target.value)}
-                            placeholder="Ex: Julho"
                             fullWidth
                             margin="normal"
-                        />
+                        >
+                            {MESES.map(mes => (
+                                <MenuItem key={mes} value={mes}>
+                                    {mes}
+                                </MenuItem>
+                            ))}
+                        </TextField>
 
                         <TextField
                             label="Ano"
@@ -552,11 +533,11 @@ function PlanejamentoFuturo() {
             </Card>
 
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-                Projecao Mensal
+                Projeção Mensal
             </Typography>
 
             {projecao.length === 0 ? (
-                <Typography>Nenhum mes para projetar.</Typography>
+                <Typography>Nenhum mês para projetar.</Typography>
             ) : (
                 projecao.map(item => (
                     <Card key={chaveMesAno(item)} sx={{ mb: 2, borderRadius: 3 }}>

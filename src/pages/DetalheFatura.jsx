@@ -46,6 +46,8 @@ function DetalheFatura() {
     const [valor, setValor] = useState("");
     const [devedor, setDevedor] = useState("");
     const [gastoEditandoId, setGastoEditandoId] = useState(null);
+    const [filtroPessoa, setFiltroPessoa] = useState("");
+    const [filtroStatus, setFiltroStatus] = useState("todos");
     const [gastoPagamentoId, setGastoPagamentoId] = useState("");
     const [valorRecebido, setValorRecebido] = useState("");
     const [dataRecebimento, setDataRecebimento] = useState(
@@ -92,7 +94,7 @@ function DetalheFatura() {
         event.preventDefault();
 
         if (!descricao || !valor) {
-            alert("Preencha a descricao e o valor.");
+            alert("Preencha a descrição e o valor.");
             return;
         }
 
@@ -169,7 +171,7 @@ function DetalheFatura() {
         );
 
         if (!gastoSelecionado) {
-            alert("Gasto nao encontrado.");
+            alert("Gasto não encontrado.");
             return;
         }
 
@@ -187,7 +189,7 @@ function DetalheFatura() {
         }
 
         if (valorConvertido > limiteRecebimento) {
-            alert("O valor recebido nao pode ser maior que o valor pendente.");
+            alert("O valor recebido não pode ser maior que o valor pendente.");
             return;
         }
 
@@ -352,7 +354,7 @@ function DetalheFatura() {
         const limitePagamento = faltaEuPagar + Number(pagamentoOriginal?.valor || 0);
 
         if (valorConvertido > limitePagamento) {
-            alert("O valor pago nao pode ser maior que o valor que falta pagar.");
+            alert("O valor pago não pode ser maior que o valor que falta pagar.");
             return;
         }
 
@@ -415,7 +417,7 @@ function DetalheFatura() {
         return (
             <Container maxWidth="sm" sx={{ py: 3 }}>
                 <Typography variant="h5" fontWeight="bold">
-                    Fatura nao encontrada
+                    Fatura não encontrada
                 </Typography>
 
                 <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate("/")}>
@@ -457,6 +459,16 @@ function DetalheFatura() {
     const gastosComPagamentoMaiorQueValor = gastos.filter(
         gasto => calcularValorPagoGasto(gasto) > Number(gasto.valor || 0)
     );
+    const nomesPessoas = Array.from(
+        new Set(gastos.map(gasto => gasto.devedor.trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    const gastosFiltrados = gastos
+        .filter(gasto => !filtroPessoa || gasto.devedor.trim() === filtroPessoa)
+        .filter(gasto => {
+            if (filtroStatus === "todos") return true;
+
+            return obterStatusGasto(gasto).label.toLowerCase() === filtroStatus;
+        });
     const avisos = [
         totalQueDevem > fatura.valorTotal
             ? `A soma do que pessoas devem passou do valor total da fatura em R$ ${(totalQueDevem - fatura.valorTotal).toFixed(2)}.`
@@ -465,7 +477,7 @@ function DetalheFatura() {
             ? "Sua parte ficou negativa porque as pessoas devem mais do que o total da fatura."
             : null,
         totalPagoPorMim > minhaParte && minhaParte >= 0
-            ? `Voce registrou R$ ${(totalPagoPorMim - minhaParte).toFixed(2)} a mais na sua parte.`
+            ? `Você registrou R$ ${(totalPagoPorMim - minhaParte).toFixed(2)} a mais na sua parte.`
             : null,
         totalPago > totalQueDevem
             ? `Os recebimentos registrados passaram o total devido em R$ ${(totalPago - totalQueDevem).toFixed(2)}.`
@@ -537,7 +549,7 @@ function DetalheFatura() {
 
                             <Box>
                                 <Typography color="text.secondary">
-                                    Ja recebi
+                                    Já recebi
                                 </Typography>
                                 <Typography fontWeight="bold">
                                     R$ {totalPago.toFixed(2)}
@@ -564,7 +576,7 @@ function DetalheFatura() {
 
                             <Box>
                                 <Typography color="text.secondary">
-                                    Ja paguei
+                                    Já paguei
                                 </Typography>
                                 <Typography fontWeight="bold">
                                     R$ {totalPagoPorMim.toFixed(2)}
@@ -662,7 +674,7 @@ function DetalheFatura() {
 
                             <Box component="form" onSubmit={salvarGasto}>
                                 <TextField
-                                    label="Descricao"
+                                    label="Descrição"
                                     value={descricao}
                                     onChange={event => setDescricao(event.target.value)}
                                     placeholder="Ex: Mercado"
@@ -691,7 +703,7 @@ function DetalheFatura() {
 
                                 <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
                                     <Button type="submit" variant="contained">
-                                        {gastoEditandoId ? "Salvar Alteracoes" : "Salvar Gasto"}
+                                        {gastoEditandoId ? "Salvar Alterações" : "Salvar Gasto"}
                                     </Button>
 
                                     {gastoEditandoId && (
@@ -712,10 +724,50 @@ function DetalheFatura() {
                         Gastos
                     </Typography>
 
+                    <Card sx={{ mb: 2, borderRadius: 3 }}>
+                        <CardContent>
+                            <Typography fontWeight="bold" gutterBottom>
+                                Filtros
+                            </Typography>
+
+                            <TextField
+                                select
+                                label="Pessoa"
+                                value={filtroPessoa}
+                                onChange={event => setFiltroPessoa(event.target.value)}
+                                fullWidth
+                                margin="normal"
+                            >
+                                <MenuItem value="">Todas</MenuItem>
+                                {nomesPessoas.map(nome => (
+                                    <MenuItem key={nome} value={nome}>
+                                        {nome}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+
+                            <TextField
+                                select
+                                label="Status"
+                                value={filtroStatus}
+                                onChange={event => setFiltroStatus(event.target.value)}
+                                fullWidth
+                                margin="normal"
+                            >
+                                <MenuItem value="todos">Todos</MenuItem>
+                                <MenuItem value="pendente">Pendente</MenuItem>
+                                <MenuItem value="parcial">Parcial</MenuItem>
+                                <MenuItem value="pago">Pago</MenuItem>
+                            </TextField>
+                        </CardContent>
+                    </Card>
+
                     {gastos.length === 0 ? (
                         <Typography>Nenhum gasto cadastrado.</Typography>
+                    ) : gastosFiltrados.length === 0 ? (
+                        <Typography>Nenhum gasto encontrado com esses filtros.</Typography>
                     ) : (
-                        gastos.map(gasto => {
+                        gastosFiltrados.map(gasto => {
                             const status = obterStatusGasto(gasto);
                             const valorPago = calcularValorPagoGasto(gasto);
                             const valorPendente = calcularValorPendenteGasto(gasto);
@@ -759,7 +811,7 @@ function DetalheFatura() {
                                         {pagamentos.length > 0 && (
                                             <Box sx={{ mt: 2 }}>
                                                 <Typography fontWeight="bold">
-                                                    Historico de recebimentos
+                                                    Histórico de recebimentos
                                                 </Typography>
 
                                                 {pagamentos.map(pagamento => (
@@ -869,7 +921,7 @@ function DetalheFatura() {
                             Sobrou para mim: R$ {minhaParte.toFixed(2)}
                         </Typography>
 
-                        <Typography>Ja paguei: R$ {totalPagoPorMim.toFixed(2)}</Typography>
+                        <Typography>Já paguei: R$ {totalPagoPorMim.toFixed(2)}</Typography>
 
                         <Typography fontWeight="bold" color="warning.main">
                             Falta eu pagar: R$ {faltaEuPagar.toFixed(2)}

@@ -4,6 +4,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import Faturas from "./pages/Faturas";
 import DetalheFatura from "./pages/DetalheFatura";
 import PlanejamentoFuturo from "./pages/PlanejamentoFuturo";
+import Pessoas from "./pages/Pessoas";
 
 const theme = createTheme({
     palette: {
@@ -28,6 +29,7 @@ function App() {
                     <Route path="/" element={<Faturas />} />
                     <Route path="/fatura/:id" element={<DetalheFatura />} />
                     <Route path="/planejamento" element={<PlanejamentoFuturo />} />
+                    <Route path="/pessoas" element={<Pessoas />} />
                 </Routes>
             </BrowserRouter>
         </ThemeProvider>

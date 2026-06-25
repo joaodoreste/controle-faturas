@@ -110,7 +110,7 @@ function ResumoPorPessoa({ gastos }) {
                                 </Typography>
 
                                 <Typography>
-                                    Ja pagou: R$ {totalPago.toFixed(2)}
+                                    Já pagou: R$ {totalPago.toFixed(2)}
                                 </Typography>
 
                                 <Typography>

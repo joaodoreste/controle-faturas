@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+    Alert,
     Box,
     Button,
     Card,
@@ -50,10 +51,12 @@ function DetalheFatura() {
     const [dataRecebimento, setDataRecebimento] = useState(
         new Date().toISOString().slice(0, 10)
     );
+    const [recebimentoEditando, setRecebimentoEditando] = useState(null);
     const [valorPagamento, setValorPagamento] = useState("");
     const [dataPagamento, setDataPagamento] = useState(
         new Date().toISOString().slice(0, 10)
     );
+    const [pagamentoMinhaParteEditandoId, setPagamentoMinhaParteEditandoId] = useState(null);
 
     const faturas = buscarFaturas();
     const fatura = faturas.find(item => String(item.id) === String(id));
@@ -69,11 +72,13 @@ function DetalheFatura() {
         setGastoPagamentoId("");
         setValorRecebido("");
         setDataRecebimento(new Date().toISOString().slice(0, 10));
+        setRecebimentoEditando(null);
     }
 
     function limparPagamentoMinhaParte() {
         setValorPagamento("");
         setDataPagamento(new Date().toISOString().slice(0, 10));
+        setPagamentoMinhaParteEditandoId(null);
     }
 
     function atualizarGastos(gastosAtualizados) {
@@ -169,20 +174,25 @@ function DetalheFatura() {
         }
 
         const valorConvertido = Number(valorRecebido);
-        const faltaReceber = calcularValorPendenteGasto(gastoSelecionado);
+        const pagamentoOriginal = recebimentoEditando
+            ? obterPagamentosGasto(gastoSelecionado).find(
+                pagamento => pagamento.id === recebimentoEditando.pagamentoId
+            )
+            : null;
+        const limiteRecebimento = calcularValorPendenteGasto(gastoSelecionado) + Number(pagamentoOriginal?.valor || 0);
 
         if (valorConvertido <= 0) {
             alert("Informe um valor maior que zero.");
             return;
         }
 
-        if (valorConvertido > faltaReceber) {
+        if (valorConvertido > limiteRecebimento) {
             alert("O valor recebido nao pode ser maior que o valor pendente.");
             return;
         }
 
         const novoPagamento = {
-            id: Date.now(),
+            id: recebimentoEditando?.pagamentoId || Date.now(),
             valor: valorConvertido,
             data: dataRecebimento
         };
@@ -193,7 +203,13 @@ function DetalheFatura() {
                 return gasto;
             }
 
-            const pagamentos = [...obterPagamentosGasto(gasto), novoPagamento];
+            const pagamentos = recebimentoEditando
+                ? obterPagamentosGasto(gasto).map(pagamento =>
+                    pagamento.id === recebimentoEditando.pagamentoId
+                        ? novoPagamento
+                        : pagamento
+                )
+                : [...obterPagamentosGasto(gasto), novoPagamento];
             const gastoAtualizado = {
                 ...gasto,
                 pagamentos
@@ -207,6 +223,17 @@ function DetalheFatura() {
 
         atualizarGastos(gastosAtualizados);
         limparRecebimento();
+    }
+
+    function editarPagamentoRecebido(gasto, pagamento) {
+        setGastoPagamentoId(String(gasto.id));
+        setValorRecebido(String(pagamento.valor));
+        setDataRecebimento(pagamento.data);
+        setRecebimentoEditando({
+            gastoId: gasto.id,
+            pagamentoId: pagamento.id
+        });
+        setAba(2);
     }
 
     function quitarGasto(gastoId) {
@@ -319,24 +346,48 @@ function DetalheFatura() {
             return;
         }
 
-        if (valorConvertido > faltaEuPagar) {
+        const pagamentoOriginal = pagamentosMinhaParte.find(
+            pagamento => pagamento.id === pagamentoMinhaParteEditandoId
+        );
+        const limitePagamento = faltaEuPagar + Number(pagamentoOriginal?.valor || 0);
+
+        if (valorConvertido > limitePagamento) {
             alert("O valor pago nao pode ser maior que o valor que falta pagar.");
             return;
         }
 
         const novoPagamento = {
-            id: Date.now(),
+            id: pagamentoMinhaParteEditandoId || Date.now(),
             faturaId: Number(id),
             valor: valorConvertido,
             data: dataPagamento
         };
 
-        salvarPagamentosMinhaParte([
-            ...buscarPagamentosMinhaParte(),
-            novoPagamento
-        ]);
-        setPagamentosMinhaParte([...pagamentosMinhaParte, novoPagamento]);
+        const pagamentosAtualizados = pagamentoMinhaParteEditandoId
+            ? buscarPagamentosMinhaParte().map(pagamento =>
+                pagamento.id === pagamentoMinhaParteEditandoId
+                    ? novoPagamento
+                    : pagamento
+            )
+            : [
+                ...buscarPagamentosMinhaParte(),
+                novoPagamento
+            ];
+
+        salvarPagamentosMinhaParte(pagamentosAtualizados);
+        setPagamentosMinhaParte(
+            pagamentosAtualizados.filter(
+                pagamento => String(pagamento.faturaId) === String(id)
+            )
+        );
         limparPagamentoMinhaParte();
+    }
+
+    function editarPagamentoMinhaParte(pagamento) {
+        setPagamentoMinhaParteEditandoId(pagamento.id);
+        setValorPagamento(String(pagamento.valor));
+        setDataPagamento(pagamento.data);
+        setAba(3);
     }
 
     function excluirPagamentoMinhaParte(pagamentoId) {
@@ -384,7 +435,7 @@ function DetalheFatura() {
         0
     );
 
-    const totalPendente = totalQueDevem - totalPago;
+    const totalPendente = Math.max(totalQueDevem - totalPago, 0);
     const minhaParte = fatura.valorTotal - totalQueDevem;
 
     const totalPagoPorMim = pagamentosMinhaParte.reduce(
@@ -400,6 +451,29 @@ function DetalheFatura() {
     const gastosPendentes = gastos.filter(
         gasto => calcularValorPendenteGasto(gasto) > 0
     );
+    const gastosDisponiveisRecebimento = recebimentoEditando
+        ? gastos.filter(gasto => gasto.id === recebimentoEditando.gastoId)
+        : gastosPendentes;
+    const gastosComPagamentoMaiorQueValor = gastos.filter(
+        gasto => calcularValorPagoGasto(gasto) > Number(gasto.valor || 0)
+    );
+    const avisos = [
+        totalQueDevem > fatura.valorTotal
+            ? `A soma do que pessoas devem passou do valor total da fatura em R$ ${(totalQueDevem - fatura.valorTotal).toFixed(2)}.`
+            : null,
+        minhaParte < 0
+            ? "Sua parte ficou negativa porque as pessoas devem mais do que o total da fatura."
+            : null,
+        totalPagoPorMim > minhaParte && minhaParte >= 0
+            ? `Voce registrou R$ ${(totalPagoPorMim - minhaParte).toFixed(2)} a mais na sua parte.`
+            : null,
+        totalPago > totalQueDevem
+            ? `Os recebimentos registrados passaram o total devido em R$ ${(totalPago - totalQueDevem).toFixed(2)}.`
+            : null,
+        gastosComPagamentoMaiorQueValor.length > 0
+            ? `${gastosComPagamentoMaiorQueValor.length} gasto(s) tem recebimento maior que o valor devido.`
+            : null
+    ].filter(Boolean);
 
     return (
         <Container maxWidth="sm" sx={{ py: 3 }}>
@@ -434,6 +508,16 @@ function DetalheFatura() {
                         <Typography variant="h6" fontWeight="bold" gutterBottom>
                             Resumo da Fatura
                         </Typography>
+
+                        {avisos.length > 0 && (
+                            <Box sx={{ mb: 2 }}>
+                                {avisos.map(aviso => (
+                                    <Alert key={aviso} severity="warning" sx={{ mb: 1 }}>
+                                        {aviso}
+                                    </Alert>
+                                ))}
+                            </Box>
+                        )}
 
                         <Box
                             sx={{
@@ -518,8 +602,9 @@ function DetalheFatura() {
                                     onChange={event => setGastoPagamentoId(event.target.value)}
                                     fullWidth
                                     margin="normal"
+                                    disabled={Boolean(recebimentoEditando)}
                                 >
-                                    {gastosPendentes.map(gasto => (
+                                    {gastosDisponiveisRecebimento.map(gasto => (
                                         <MenuItem key={gasto.id} value={gasto.id}>
                                             {gasto.devedor} - {gasto.descricao} - falta R$ {calcularValorPendenteGasto(gasto).toFixed(2)}
                                         </MenuItem>
@@ -550,10 +635,21 @@ function DetalheFatura() {
                                     type="submit"
                                     variant="contained"
                                     sx={{ mt: 1 }}
-                                    disabled={gastosPendentes.length === 0}
+                                    disabled={gastosDisponiveisRecebimento.length === 0}
                                 >
-                                    Registrar Recebimento
+                                    {recebimentoEditando ? "Salvar Recebimento" : "Registrar Recebimento"}
                                 </Button>
+
+                                {recebimentoEditando && (
+                                    <Button
+                                        type="button"
+                                        variant="outlined"
+                                        sx={{ mt: 1, ml: 1 }}
+                                        onClick={limparRecebimento}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                )}
                             </Box>
                         </CardContent>
                     </Card>
@@ -690,6 +786,16 @@ function DetalheFatura() {
 
                                                         <Button
                                                             variant="outlined"
+                                                            size="small"
+                                                            onClick={() =>
+                                                                editarPagamentoRecebido(gasto, pagamento)
+                                                            }
+                                                        >
+                                                            Editar
+                                                        </Button>
+
+                                                        <Button
+                                                            variant="outlined"
                                                             color="error"
                                                             size="small"
                                                             onClick={() =>
@@ -791,8 +897,19 @@ function DetalheFatura() {
                             />
 
                             <Button type="submit" variant="contained" sx={{ mt: 1 }}>
-                                Marcar como pago
+                                {pagamentoMinhaParteEditandoId ? "Salvar Pagamento" : "Marcar como pago"}
                             </Button>
+
+                            {pagamentoMinhaParteEditandoId && (
+                                <Button
+                                    type="button"
+                                    variant="outlined"
+                                    sx={{ mt: 1, ml: 1 }}
+                                    onClick={limparPagamentoMinhaParte}
+                                >
+                                    Cancelar
+                                </Button>
+                            )}
                         </Box>
 
                         <Box sx={{ mt: 2 }}>
@@ -823,6 +940,14 @@ function DetalheFatura() {
                                                 {formatarData(pagamento.data)}
                                             </Typography>
                                         </Box>
+
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => editarPagamentoMinhaParte(pagamento)}
+                                        >
+                                            Editar
+                                        </Button>
 
                                         <Button
                                             variant="outlined"

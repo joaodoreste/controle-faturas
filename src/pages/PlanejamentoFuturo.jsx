@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+    Alert,
     Box,
     Button,
     Card,
@@ -50,10 +51,12 @@ function PlanejamentoFuturo() {
     const [valorRecebimento, setValorRecebimento] = useState("");
     const [mesRecebimento, setMesRecebimento] = useState("");
     const [anoRecebimento, setAnoRecebimento] = useState(new Date().getFullYear());
+    const [recebimentoEditandoId, setRecebimentoEditandoId] = useState(null);
     const [descricaoDespesa, setDescricaoDespesa] = useState("");
     const [valorDespesa, setValorDespesa] = useState("");
     const [mesDespesa, setMesDespesa] = useState("");
     const [anoDespesa, setAnoDespesa] = useState(new Date().getFullYear());
+    const [despesaEditandoId, setDespesaEditandoId] = useState(null);
 
     function atualizarPlanejamento(novoPlanejamento) {
         setPlanejamento(novoPlanejamento);
@@ -78,22 +81,34 @@ function PlanejamentoFuturo() {
         }
 
         const novoRecebimento = {
-            id: Date.now(),
+            id: recebimentoEditandoId || Date.now(),
             descricao: descricaoRecebimento.trim(),
             valor: Number(valorRecebimento),
             mes: mesRecebimento.trim(),
             ano: Number(anoRecebimento)
         };
 
+        if (novoRecebimento.valor <= 0) {
+            alert("Informe um valor maior que zero.");
+            return;
+        }
+
         atualizarPlanejamento({
             ...planejamento,
-            recebimentos: [...planejamento.recebimentos, novoRecebimento]
+            recebimentos: recebimentoEditandoId
+                ? planejamento.recebimentos.map(recebimento =>
+                    recebimento.id === recebimentoEditandoId
+                        ? novoRecebimento
+                        : recebimento
+                )
+                : [...planejamento.recebimentos, novoRecebimento]
         });
 
         setDescricaoRecebimento("");
         setValorRecebimento("");
         setMesRecebimento("");
         setAnoRecebimento(new Date().getFullYear());
+        setRecebimentoEditandoId(null);
     }
 
     function salvarDespesa(event) {
@@ -105,18 +120,62 @@ function PlanejamentoFuturo() {
         }
 
         const novaDespesa = {
-            id: Date.now(),
+            id: despesaEditandoId || Date.now(),
             descricao: descricaoDespesa.trim(),
             valor: Number(valorDespesa),
             mes: mesDespesa.trim(),
             ano: Number(anoDespesa)
         };
 
+        if (novaDespesa.valor <= 0) {
+            alert("Informe um valor maior que zero.");
+            return;
+        }
+
         atualizarPlanejamento({
             ...planejamento,
-            despesas: [...planejamento.despesas, novaDespesa]
+            despesas: despesaEditandoId
+                ? planejamento.despesas.map(despesa =>
+                    despesa.id === despesaEditandoId
+                        ? novaDespesa
+                        : despesa
+                )
+                : [...planejamento.despesas, novaDespesa]
         });
 
+        setDescricaoDespesa("");
+        setValorDespesa("");
+        setMesDespesa("");
+        setAnoDespesa(new Date().getFullYear());
+        setDespesaEditandoId(null);
+    }
+
+    function editarRecebimento(recebimento) {
+        setRecebimentoEditandoId(recebimento.id);
+        setDescricaoRecebimento(recebimento.descricao);
+        setValorRecebimento(String(recebimento.valor));
+        setMesRecebimento(recebimento.mes);
+        setAnoRecebimento(recebimento.ano);
+    }
+
+    function cancelarEdicaoRecebimento() {
+        setRecebimentoEditandoId(null);
+        setDescricaoRecebimento("");
+        setValorRecebimento("");
+        setMesRecebimento("");
+        setAnoRecebimento(new Date().getFullYear());
+    }
+
+    function editarDespesa(despesa) {
+        setDespesaEditandoId(despesa.id);
+        setDescricaoDespesa(despesa.descricao);
+        setValorDespesa(String(despesa.valor));
+        setMesDespesa(despesa.mes);
+        setAnoDespesa(despesa.ano);
+    }
+
+    function cancelarEdicaoDespesa() {
+        setDespesaEditandoId(null);
         setDescricaoDespesa("");
         setValorDespesa("");
         setMesDespesa("");
@@ -130,6 +189,10 @@ function PlanejamentoFuturo() {
                 recebimento => recebimento.id !== recebimentoId
             )
         });
+
+        if (recebimentoEditandoId === recebimentoId) {
+            cancelarEdicaoRecebimento();
+        }
     }
 
     function excluirDespesa(despesaId) {
@@ -139,6 +202,10 @@ function PlanejamentoFuturo() {
                 despesa => despesa.id !== despesaId
             )
         });
+
+        if (despesaEditandoId === despesaId) {
+            cancelarEdicaoDespesa();
+        }
     }
 
     function chaveMesAno(item) {
@@ -228,6 +295,7 @@ function PlanejamentoFuturo() {
         saldoAtual: Number(planejamento.saldoAtual || 0),
         itens: []
     }).itens;
+    const mesesNegativos = projecao.filter(item => item.saldoFinal < 0);
 
     return (
         <Container maxWidth="sm" sx={{ py: 3 }}>
@@ -238,6 +306,12 @@ function PlanejamentoFuturo() {
             <Typography variant="h4" fontWeight="bold" sx={{ mt: 2 }} gutterBottom>
                 Planejamento Futuro
             </Typography>
+
+            {mesesNegativos.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                    Existem {mesesNegativos.length} mes(es) com saldo previsto negativo.
+                </Alert>
+            )}
 
             <Card sx={{ mb: 3, borderRadius: 3 }}>
                 <CardContent>
@@ -308,8 +382,19 @@ function PlanejamentoFuturo() {
                         />
 
                         <Button type="submit" variant="contained" sx={{ mt: 1 }}>
-                            Adicionar Recebimento
+                            {recebimentoEditandoId ? "Salvar Recebimento" : "Adicionar Recebimento"}
                         </Button>
+
+                        {recebimentoEditandoId && (
+                            <Button
+                                type="button"
+                                variant="outlined"
+                                sx={{ mt: 1, ml: 1 }}
+                                onClick={cancelarEdicaoRecebimento}
+                            >
+                                Cancelar
+                            </Button>
+                        )}
                     </Box>
 
                     <Box sx={{ mt: 2 }}>
@@ -335,14 +420,24 @@ function PlanejamentoFuturo() {
                                     </Typography>
                                 </Box>
 
-                                <Button
-                                    variant="outlined"
-                                    color="error"
-                                    size="small"
-                                    onClick={() => excluirRecebimento(recebimento.id)}
-                                >
-                                    Excluir
-                                </Button>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() => editarRecebimento(recebimento)}
+                                    >
+                                        Editar
+                                    </Button>
+
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        size="small"
+                                        onClick={() => excluirRecebimento(recebimento.id)}
+                                    >
+                                        Excluir
+                                    </Button>
+                                </Box>
                             </Box>
                         ))}
                     </Box>
@@ -394,8 +489,19 @@ function PlanejamentoFuturo() {
                         />
 
                         <Button type="submit" variant="contained" sx={{ mt: 1 }}>
-                            Adicionar Despesa
+                            {despesaEditandoId ? "Salvar Despesa" : "Adicionar Despesa"}
                         </Button>
+
+                        {despesaEditandoId && (
+                            <Button
+                                type="button"
+                                variant="outlined"
+                                sx={{ mt: 1, ml: 1 }}
+                                onClick={cancelarEdicaoDespesa}
+                            >
+                                Cancelar
+                            </Button>
+                        )}
                     </Box>
 
                     <Box sx={{ mt: 2 }}>
@@ -421,14 +527,24 @@ function PlanejamentoFuturo() {
                                     </Typography>
                                 </Box>
 
-                                <Button
-                                    variant="outlined"
-                                    color="error"
-                                    size="small"
-                                    onClick={() => excluirDespesa(despesa.id)}
-                                >
-                                    Excluir
-                                </Button>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() => editarDespesa(despesa)}
+                                    >
+                                        Editar
+                                    </Button>
+
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        size="small"
+                                        onClick={() => excluirDespesa(despesa.id)}
+                                    >
+                                        Excluir
+                                    </Button>
+                                </Box>
                             </Box>
                         ))}
                     </Box>

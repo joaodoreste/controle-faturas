@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Box,
     Button,
@@ -23,6 +24,7 @@ import {
 } from "../services/localStorageService";
 
 function Faturas() {
+    const navigate = useNavigate();
     const [faturas, setFaturas] = useState(() => buscarFaturas());
 
     const [mes, setMes] = useState("");
@@ -191,6 +193,14 @@ function Faturas() {
             <Typography variant="h4" fontWeight="bold" gutterBottom>
                 Minhas Faturas
             </Typography>
+
+            <Button
+                variant="outlined"
+                onClick={() => navigate("/planejamento")}
+                sx={{ mb: 2 }}
+            >
+                Planejamento Futuro
+            </Button>
 
             <DashboardGeral faturas={faturas} />
 

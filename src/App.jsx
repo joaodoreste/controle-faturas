@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Faturas from "./pages/Faturas";
 import DetalheFatura from "./pages/DetalheFatura";
+import PlanejamentoFuturo from "./pages/PlanejamentoFuturo";
 
 const theme = createTheme({
     palette: {
@@ -26,6 +27,7 @@ function App() {
                 <Routes>
                     <Route path="/" element={<Faturas />} />
                     <Route path="/fatura/:id" element={<DetalheFatura />} />
+                    <Route path="/planejamento" element={<PlanejamentoFuturo />} />
                 </Routes>
             </BrowserRouter>
         </ThemeProvider>

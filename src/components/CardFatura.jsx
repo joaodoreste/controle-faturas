@@ -10,6 +10,7 @@ import {
     buscarGastos,
     buscarPagamentosMinhaParte
 } from "../services/localStorageService";
+import { calcularValorPagoGasto } from "../utils/pagamentos";
 
 function CardFatura({
                         fatura,
@@ -35,9 +36,10 @@ function CardFatura({
         0
     );
 
-    const totalPago = gastos
-        .filter(gasto => gasto.pago)
-        .reduce((total, gasto) => total + gasto.valor, 0);
+    const totalPago = gastos.reduce(
+        (total, gasto) => total + calcularValorPagoGasto(gasto),
+        0
+    );
 
     const totalPendente = totalQueDevem - totalPago;
     const minhaParte = fatura.valorTotal - totalQueDevem;

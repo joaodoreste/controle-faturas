@@ -8,6 +8,7 @@ import {
     buscarGastos,
     buscarPagamentosMinhaParte
 } from "../services/localStorageService";
+import { calcularValorPagoGasto } from "../utils/pagamentos";
 
 function DashboardGeral({ faturas }) {
     const gastos = buscarGastos();
@@ -23,9 +24,10 @@ function DashboardGeral({ faturas }) {
         0
     );
 
-    const totalRecebido = gastos
-        .filter(gasto => gasto.pago)
-        .reduce((total, gasto) => total + gasto.valor, 0);
+    const totalRecebido = gastos.reduce(
+        (total, gasto) => total + calcularValorPagoGasto(gasto),
+        0
+    );
 
     const totalPendente = totalQueDevem - totalRecebido;
 

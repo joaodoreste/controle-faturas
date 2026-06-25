@@ -1,17 +1,18 @@
 import {
+    Box,
     Card,
     CardContent,
-    Typography,
-    Box,
-    Chip
+    Chip,
+    Typography
 } from "@mui/material";
+import {
+    calcularValorPagoGasto,
+    calcularValorPendenteGasto,
+    obterStatusGasto
+} from "../utils/pagamentos";
 
 function ResumoPorPessoa({ gastos }) {
-    const gastosDeOutrasPessoas = gastos.filter(
-        gasto => gasto.devedor.trim().toLowerCase() !== "eu"
-    );
-
-    const pessoas = gastosDeOutrasPessoas.reduce((acc, gasto) => {
+    const pessoas = gastos.reduce((acc, gasto) => {
         const nome = gasto.devedor.trim();
 
         if (!acc[nome]) {
@@ -29,57 +30,79 @@ function ResumoPorPessoa({ gastos }) {
     }
 
     return (
-        <Box sx={{ mt: 3 }}>
+        <Box>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
                 Resumo por Pessoa
             </Typography>
 
             {nomes.map(nome => {
                 const gastosDaPessoa = pessoas[nome];
-
                 const total = gastosDaPessoa.reduce(
-                    (soma, gasto) => soma + gasto.valor,
+                    (soma, gasto) => soma + Number(gasto.valor || 0),
                     0
                 );
-
-                const totalPago = gastosDaPessoa
-                    .filter(gasto => gasto.pago)
-                    .reduce((soma, gasto) => soma + gasto.valor, 0);
-
+                const totalPago = gastosDaPessoa.reduce(
+                    (soma, gasto) => soma + calcularValorPagoGasto(gasto),
+                    0
+                );
                 const totalPendente = total - totalPago;
 
                 return (
                     <Card key={nome} sx={{ mb: 2, borderRadius: 3 }}>
                         <CardContent>
-                            <Typography variant="h6" fontWeight="bold">
-                                {nome}
-                            </Typography>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    gap: 1
+                                }}
+                            >
+                                <Typography variant="h6" fontWeight="bold">
+                                    {nome}
+                                </Typography>
 
-                            {gastosDaPessoa.map(gasto => (
-                                <Box
-                                    key={gasto.id}
-                                    sx={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        gap: 1,
-                                        mt: 1
-                                    }}
-                                >
-                                    <Typography>
-                                        {gasto.descricao}
-                                    </Typography>
+                                <Chip
+                                    label={totalPendente <= 0 ? "Pago" : totalPago > 0 ? "Parcial" : "Pendente"}
+                                    color={totalPendente <= 0 ? "success" : totalPago > 0 ? "info" : "warning"}
+                                    size="small"
+                                />
+                            </Box>
 
-                                    <Typography>
-                                        R$ {gasto.valor.toFixed(2)}
-                                    </Typography>
+                            {gastosDaPessoa.map(gasto => {
+                                const status = obterStatusGasto(gasto);
 
-                                    <Chip
-                                        label={gasto.pago ? "Pago" : "Pendente"}
-                                        color={gasto.pago ? "success" : "warning"}
-                                        size="small"
-                                    />
-                                </Box>
-                            ))}
+                                return (
+                                    <Box
+                                        key={gasto.id}
+                                        sx={{
+                                            display: "grid",
+                                            gridTemplateColumns: "1fr auto",
+                                            gap: 1,
+                                            mt: 1.5,
+                                            alignItems: "center"
+                                        }}
+                                    >
+                                        <Box>
+                                            <Typography fontWeight="bold">
+                                                {gasto.descricao}
+                                            </Typography>
+                                            <Typography color="text.secondary">
+                                                Recebido: R$ {calcularValorPagoGasto(gasto).toFixed(2)} de R$ {Number(gasto.valor || 0).toFixed(2)}
+                                            </Typography>
+                                            <Typography color="text.secondary">
+                                                Falta: R$ {calcularValorPendenteGasto(gasto).toFixed(2)}
+                                            </Typography>
+                                        </Box>
+
+                                        <Chip
+                                            label={status.label}
+                                            color={status.color}
+                                            size="small"
+                                        />
+                                    </Box>
+                                );
+                            })}
 
                             <Box sx={{ mt: 2 }}>
                                 <Typography fontWeight="bold">
@@ -87,7 +110,7 @@ function ResumoPorPessoa({ gastos }) {
                                 </Typography>
 
                                 <Typography>
-                                    Já pagou: R$ {totalPago.toFixed(2)}
+                                    Ja pagou: R$ {totalPago.toFixed(2)}
                                 </Typography>
 
                                 <Typography>
